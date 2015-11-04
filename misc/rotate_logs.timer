@@ -1,0 +1,9 @@
+[Unit]
+Description=runs rotate_logs every day
+
+[Timer]
+OnCalendar=daily
+Unit=rotate_logs.service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,16 @@
+#This Service gets started each day from rotate_logs.timer
+#It deletes log files in the directory JOURNAL_REMOTE_DIR
+#which are older than ROTATION_MAXIMUM_AGE days and
+#deletes the oldest files until the ROTATION_MAXIMUM_SIZE limit is met
+[Unit]
+Description=rotate remote journal logs
+
+[Service]
+EnvironmentFile=/etc/journal-gateway-zmtp-sink.conf
+#Setting the syslog identifier manually, so the logs are somewhat proper
+SyslogIdentifier=rotate_logs
+ExecStart=/bin/journalctl -D $JOURNAL_REMOTE_DIR --vacuum-time $ROTATION_MAXIMUM_AGE --vacuum-size $ROTATION_MAXIMUM_SIZE
+ExecStop=/bin/kill -s SIGTERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target
