@@ -3,6 +3,10 @@ journal-gateway-zmtp
 
 A gateway for transmitting of systemds journal via a zmtp connection.
 
+Version 1.0.3 - 04 Nov 2015
+---------------------------
+* Add service & timer for log rotation of remote log directory
+
 Version 1.0.2 - 31 Jul 2015
 ---------------------------
 
