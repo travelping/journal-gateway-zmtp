@@ -1,0 +1,9 @@
+[Unit]
+Description=runs remove_old_logs every day
+
+[Timer]
+OnCalendar=daily
+Unit=remove_old_logs.service
+
+[Install]
+WantedBy=multi-user.target

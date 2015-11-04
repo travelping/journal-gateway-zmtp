@@ -1,0 +1,15 @@
+#This Service gets started each day from remove_old_logs.timer
+#It deletes log files in the directory JOURNAL_REMOTE_DIR
+#which are older than MAXIMUM_AGE days
+[Unit]
+Description=remove old remote journal logs
+
+[Service]
+EnvironmentFile=/etc/remove_old_logs.conf
+#Setting the syslog identifier manually, so the logs are somewhat proper
+SyslogIdentifier=remove_old_logs
+ExecStart=/bin/journalctl -D $JOURNAL_REMOTE_DIR --vacuum-time $MAXIMUM_AGE
+ExecStop=/bin/kill -s SIGTERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target
