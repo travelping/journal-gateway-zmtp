@@ -484,10 +484,12 @@ int get_int_from_jstring(json_t *arg){
 
 int execute_command(opcode command_id, json_t *command_arg, zframe_t **response){
     char stringh[2048];
-
+    char *input;
     switch (command_id){
         case FILTER_ADD:
-            filter_add(get_string_from_jstring(command_arg), response);
+            input = get_string_from_jstring(command_arg);
+            filter_add(input, response);
+            free(input);
             break;
         case FILTER_ADD_CONJUNCTION:
             filter_add_conjunction(response);
@@ -505,16 +507,18 @@ int execute_command(opcode command_id, json_t *command_arg, zframe_t **response)
             filter_show(response);
             break;
         case SET_TARGET_PORT: ;
-            char *port = get_string_from_jstring(command_arg);
-            set_target_port(port);
+            input = get_string_from_jstring(command_arg);
+            set_target_port(input);
             *response = zframe_new(CTRL_ACCEPTED,strlen(CTRL_ACCEPTED));
-            free(port);
+            free(input);
             break;
         case SHOW_TARGET_PORT:
             show_target_port(response);
             break;
         case SET_LOG_DIRECTORY:
-            set_log_directory(get_string_from_jstring(command_arg), response);
+            input = get_string_from_jstring(command_arg);
+            set_log_directory(input, response);
+            free(input);
             break;
         case SHOW_LOG_DIRECTORY:
             show_log_directory(response);
