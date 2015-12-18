@@ -928,25 +928,27 @@ static void *handler_routine (void *inp) {
             size_t entry_string_size;
             char *entry_string;
             get_entry_string( &entry_string, &entry_string_size );
-            if ( memcmp(entry_string, END, strlen(END)) == 0 ){
-                send_flag_wrapper (query_handler, ctx, "query finished successfully", END);
+            if( memcmp(entry_string, END, strlen(END)) == 0 ){
+                send_flag_wrapper(query_handler, ctx, "query finished successfully", END);
+                free(entry_string);
                 return NULL;
             }
-            else if ( memcmp(entry_string, ERROR, strlen(ERROR)) == 0 ){
+            else if( memcmp(entry_string, ERROR, strlen(ERROR)) == 0 ){
                 send_flag(query_handler, ctx, ERROR);
                 sd_journal_close( j );
                 RequestMeta_destruct(args);
+                free(entry_string);
                 return NULL;
             }
             /* no problems with the new entry, send it */
             else{
                 zmsg_t *entry_msg = build_entry_msg(entry_string, entry_string_size);
-                free (entry_string);
+                free(entry_string);
                 zmsg_send (&entry_msg, query_handler);
             }
         }
         /* end of journal and 'follow' or 'listen' active? => wait indefinitely */
-        else if ( rc == 0 && (args->follow || args->listening) ){
+        else if(rc == 0 && (args->follow || args->listening)){
             sd_journal_wait( j, (uint64_t) 5000 );
         }
         /* in case moving the journal pointer around produced an error */
