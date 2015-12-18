@@ -932,6 +932,7 @@ void show_diskusage(char *ret){
     int rc = fscanf(du, "%s", du_ret);
     assert(rc);
     sprintf(ret, du_ret);
+    pclose(du);
 }
 
 /*
