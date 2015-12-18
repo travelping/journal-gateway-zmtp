@@ -972,11 +972,13 @@ int get_arg_int(json_t *arg){
 */
 int execute_command(opcode command_id, json_t *command_arg, zframe_t **response){
     int port;
-    char *dir, stringh[2048];
+    char *input, stringh[2048];
 
     switch (command_id){
         case FILTER_ADD:
-            filter_add(get_arg_string(command_arg), response);
+            input = get_arg_string(command_arg);
+            filter_add(input, response);
+            free(input);
             break;
         case FILTER_ADD_CONJUNCTION:
             filter_add_conjunction(response);
@@ -1000,10 +1002,11 @@ int execute_command(opcode command_id, json_t *command_arg, zframe_t **response)
         case SHOW_EXPOSED_PORT:
             show_exposed_port(response);
             break;
-        case SET_LOG_DIRECTORY:
-            dir = get_arg_string(command_arg);
+        case SET_LOG_DIRECTORY:{
+            char *dir = get_arg_string(command_arg);
             set_log_directory(dir, response);
             break;
+        }
         case SHOW_LOG_DIRECTORY:
             show_log_directory(response);
             break;
