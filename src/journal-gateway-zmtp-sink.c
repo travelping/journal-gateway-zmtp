@@ -262,14 +262,14 @@ int get_timestamps(clockid_t clk_id, char *buf, size_t buf_len, size_t *ts_lengt
 //-1: in field _machine_id (done with pinpointing)
 int pinpoint_metafields(const char* start, char** equalsign, char** end){
     int ret = 0;
-    const char *machine_id_key = "_MACHINE_ID";
+    const char machine_id_key[] = "_MACHINE_ID";
     char *akt_pos = (char*)start;       // casting to avoid compiler complaints
 
     // no systemd unique meta field
     if ( *equalsign == NULL ){
         // machine id field
-        if ( strncmp(akt_pos, machine_id_key, sizeof(machine_id_key)) == 0 ){
-            akt_pos += sizeof(machine_id_key);
+        if ( strncmp(akt_pos, machine_id_key, sizeof(machine_id_key) - 1) == 0 ){
+            akt_pos += sizeof(machine_id_key) - 1;
             ret = -1;
         }
     }
