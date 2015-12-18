@@ -624,7 +624,6 @@ uint64_t get_arg_date(json_t *json_args, char *key){
     else{
         return -1;
     }
-    json_decref(json_date);
 }
 
 // apply the filter set in args to j
