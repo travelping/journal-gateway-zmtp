@@ -58,17 +58,17 @@ int parse_command(char **command, char **argument){
     // parse the input
     // leading spaces
     size_t i=0;
-    while(isspace(inp[i])&& i<sizeof(inp)){
+    while(i<sizeof(inp) && isspace(inp[i])){
         i++;
     }
     // command
     size_t pc = i, lc = 0;
-    while(!isspace(inp[i]) &&  i<sizeof(inp)){
+    while(i<sizeof(inp) && !isspace(inp[i])){
         lc++;
         i++;
     }
     // spaces between command and argument
-    while(isspace(inp[i]) && i<sizeof(inp)){
+    while(i<sizeof(inp) && isspace(inp[i])){
         i++;
     }
     // argument
