@@ -147,10 +147,12 @@ void check_machine_id(){
 //helper for HASH
 /* removes item from hash */
 void con_hash_delete(Connection **hash, Connection *item){
-    HASH_DEL(*hash, item);
-    free(item->client_key);
-    zframe_destroy(&(item->id_frame));
-    free(item);
+    if(item){
+      HASH_DEL(*hash, item);
+      free(item->client_key);
+      zframe_destroy(&(item->id_frame));
+      free(item);
+    }
 }
 
 FILE* create_log_filestream(char *client_key){
