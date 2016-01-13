@@ -155,7 +155,7 @@ void con_hash_delete(Connection **hash, Connection *item){
     }
 }
 
-FILE* create_log_filestream(char *client_key){
+FILE* create_log_filestream(const char *client_key){
     FILE *ret = NULL;
 
     // directoryname/machineid/
@@ -931,7 +931,7 @@ void show_diskusage(char *ret){
     char du_ret[2048];
     int rc = fscanf(du, "%2048s", du_ret);
     assert(rc);
-    snprintf(ret, du_ret, 2048);
+    snprintf(ret, 2048, du_ret);
     pclose(du);
 }
 
