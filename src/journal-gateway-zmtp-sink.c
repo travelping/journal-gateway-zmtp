@@ -929,9 +929,9 @@ void show_diskusage(char *ret){
     FILE* du = popen(du_cmd, "r");
     assert(du);
     char du_ret[2048];
-    int rc = fscanf(du, "%s", du_ret);
+    int rc = fscanf(du, "%2048s", du_ret);
     assert(rc);
-    sprintf(ret, du_ret);
+    snprintf(ret, du_ret, 2048);
     pclose(du);
 }
 
