@@ -582,6 +582,9 @@ void set_matches(json_t *json_args, char *key){
         }
 
         args->n_clauses = n_clauses;
+        if(args->clauses){
+          free(args->clauses);
+        }
         args->clauses = clauses;
 
         return;
@@ -869,7 +872,7 @@ static void *handler_routine (void *inp) {
     zctx_t *ctx = zctx_new ();
     s_catch_signals();
     void *query_handler = zsocket_new (ctx, ZMQ_DEALER);
-	assert(query_handler);
+	  assert(query_handler);
     //zsocket_set_sndhwm (query_handler, HANDLER_HWM);
     int rc = zsocket_bind (query_handler, BACKEND_SOCKET);
 
@@ -1092,6 +1095,8 @@ The journal-gateway-zmtp-sink has to expose the given socket.\n\n"
     json_object_set(json_helper, "helper", json_filter);
     set_matches(json_helper, "helper");
     json_decref(json_helper);
+    json_decref(json_filter);
+
 
     sd_journal_print(LOG_INFO, "gateway started...");
 
@@ -1198,7 +1203,10 @@ The journal-gateway-zmtp-sink has to expose the given socket.\n\n"
             }
 
             free(handler_response_string);
-            zmsg_send (&response, frontend);
+            rc = zmsg_send (&response, frontend);
+            if(rc != 0){
+              zmsg_destroy(&response);
+            }
         }
         /* receive controls */
         if(items[2].revents & ZMQ_POLLIN){

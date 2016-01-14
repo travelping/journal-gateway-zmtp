@@ -538,6 +538,10 @@ int write_remote_log(void *frame_data, size_t frame_size){
     if(h.ok!=1){
         return 0;
     }
+
+    //cleanup
+    free(h.log_machine_id);
+
     return 1;
 }
 
@@ -1193,7 +1197,8 @@ int main ( int argc, char *argv[] ){
             free(client_key);
             lookup->time_last_message = get_clock_time();
             rc = response_handler(client_ID, response);
-            zmsg_destroy (&response);
+            zmsg_destroy(&response);
+            zframe_destroy(client_ID);
             /* end of log stream and not listening for more OR did an error occur? */
             if ( rc==1 || rc==-1 ){
                 break;
@@ -1211,6 +1216,7 @@ int main ( int argc, char *argv[] ){
             rc = control_handler(response, client_ID);
             assert(rc);
             zmsg_destroy (&response);
+            zframe_destroy(client_ID);
         }
         time_t now = get_clock_time();
         if ( difftime(now, last_check) > 60 ){
