@@ -584,9 +584,12 @@ int response_handler(zframe_t* cid, zmsg_t *response){
 			assert(queryframe);
 			zmsg_push(m, queryframe);
 			zmsg_push(m, cid);
-			zmsg_send (&m, client);
-            free(query_string);
-        }
+			int rc = zmsg_send (&m, client);
+      if(rc != 0){
+        zmsg_destroy(&m);
+      }
+      free(query_string);
+      }
         else if( memcmp( frame_data, LOGOFF, strlen(LOGOFF) ) == 0 ){
             sd_journal_print(LOG_INFO, "one source of the gateway logged off, ID: %s", client_ID);
             Connection *lookup = NULL;
@@ -1235,6 +1238,11 @@ int main ( int argc, char *argv[] ){
     zsocket_destroy (ctx, router_control);
     zctx_destroy (&ctx);
 
+    free(filter);
+    free(new_filter);
+    free(remote_journal_directory);
+    free(client_socket_address);
+    free(control_socket_address);
     sd_journal_print(LOG_INFO, "...gateway sink stopped");
     return 0;
 }

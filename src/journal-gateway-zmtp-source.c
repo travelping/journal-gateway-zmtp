@@ -581,10 +581,18 @@ void set_matches(json_t *json_args, char *key){
             clauses[index] = clause;
         }
 
-        args->n_clauses = n_clauses;
         if(args->clauses){
+          size_t i,j;
+          for (i=0; i<args->n_clauses; i++){
+            clause = args->clauses[i];
+            for (j=0; j<clause->n_primitives; j++){
+              free(clause->primitives[j]);
+            }
+            free(args->clauses[i]);
+          }
           free(args->clauses);
         }
+        args->n_clauses = n_clauses;
         args->clauses = clauses;
 
         return;
