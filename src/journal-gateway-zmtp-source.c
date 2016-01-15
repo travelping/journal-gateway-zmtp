@@ -575,8 +575,9 @@ void set_matches(json_t *json_args, char *key){
             json_t *value1;
             json_array_foreach(json_clause, index1, value1) {
                 const char *json_clause_value = json_string_value(value1);
-                (clause->primitives)[index1] = (char *) malloc( sizeof(char) * (strlen(json_clause_value)+1) );
-                strcpy((clause->primitives)[index1], json_clause_value);
+                const size_t l = strlen(json_clause_value) + 1;
+                (clause->primitives)[index1] = (char *) malloc(l);
+                strncpy((clause->primitives)[index1], json_clause_value, l);
             }
             clauses[index] = clause;
         }
