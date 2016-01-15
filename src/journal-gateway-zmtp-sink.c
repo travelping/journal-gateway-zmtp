@@ -494,6 +494,7 @@ int whelper_write(whelper *h, const void *buf, size_t count){
 int write_remote_log(void *frame_data, size_t frame_size){
     Logging_source_t *logging_source = NULL;
     whelper h;
+    int ret = 0;
 
     Journalentry_fieldpins pins;
     pinpoint_all_metafields(frame_data, &pins);
@@ -536,13 +537,16 @@ int write_remote_log(void *frame_data, size_t frame_size){
     whelper_write(&h, "\n", 1);
 
     if(h.ok!=1){
-        return 0;
+      ret = 0;
+    }
+    else{
+      ret = 1;
     }
 
     //cleanup
     free(h.log_machine_id);
 
-    return 1;
+    return ret;
 }
 
 /* Do something with the received (log)message */
