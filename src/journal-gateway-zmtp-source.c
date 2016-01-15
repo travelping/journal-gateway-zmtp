@@ -72,6 +72,7 @@
 #include <signal.h>
 #include <stdint.h>
 #include <errno.h>
+
 #include "journal-gateway-zmtp.h"
 #include "journal-gateway-zmtp-control.h"
 #include "journal-gateway-zmtp-source.h"
@@ -766,8 +767,10 @@ char *get_entry_string(char** entry_string, size_t* entry_string_size){
     int counter = 0, i;
 
     /* first get the number of fields to allocate memory */
-    SD_JOURNAL_FOREACH_DATA(j, data, length)
-        counter++;
+    SD_JOURNAL_FOREACH_DATA(j, data, length) {
+      counter++;
+    }
+
     char *entry_fields[counter+1+3];        // +3 for meta information, prefixed by '__'
 	//entry_fields[counter+3] = 0;  // guessing
     int entry_fields_len[counter+1+3];        // +3 for meta information, prefixed by '__'
@@ -1045,7 +1048,7 @@ int control_handler (zmsg_t *command_msg, zframe_t *cid){
     return ret;
 }
 
-int main (int argc, char *argv[]){
+int main(int argc, char *argv[]) {
 
     struct option longopts[] = {
         { "help",       no_argument,            NULL,         'h' },
@@ -1099,6 +1102,7 @@ The journal-gateway-zmtp-sink has to expose the given socket.\n\n"
     new_filter = strdup("[[]]");
 
     args = malloc( sizeof(RequestMeta) );
+    args->clauses = NULL;
     json_t *json_helper = json_object();
     json_t *json_filter = json_loads("[[]]", JSON_REJECT_DUPLICATES, NULL);
     json_object_set(json_helper, "helper", json_filter);

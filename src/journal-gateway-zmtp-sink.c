@@ -1183,6 +1183,9 @@ int main ( int argc, char *argv[] ){
         /* receive logs */
         if(items[0].revents & ZMQ_POLLIN){
             response = zmsg_recv(client);
+            if(!response){
+              //FIXME
+            }
             client_ID = zmsg_pop (response);
             assert(client_ID);
             client_key = zframe_strhex(client_ID);
@@ -1201,7 +1204,6 @@ int main ( int argc, char *argv[] ){
             lookup->time_last_message = get_clock_time();
             rc = response_handler(client_ID, response);
             zmsg_destroy(&response);
-            zframe_destroy(client_ID);
             /* end of log stream and not listening for more OR did an error occur? */
             if ( rc==1 || rc==-1 ){
                 break;
@@ -1219,7 +1221,7 @@ int main ( int argc, char *argv[] ){
             rc = control_handler(response, client_ID);
             assert(rc);
             zmsg_destroy (&response);
-            zframe_destroy(client_ID);
+            zframe_destroy(&client_ID);
         }
         time_t now = get_clock_time();
         if ( difftime(now, last_check) > 60 ){
@@ -1243,6 +1245,7 @@ int main ( int argc, char *argv[] ){
     free(remote_journal_directory);
     free(client_socket_address);
     free(control_socket_address);
+
     sd_journal_print(LOG_INFO, "...gateway sink stopped");
     return 0;
 }
