@@ -3,8 +3,8 @@ SRC_DIR = $(BASE_DIR)/src
 TEST_DIR = $(BASE_DIR)/test
 MISC_DIR = $(BASE_DIR)/misc
 
-# CC = gcc
-CFLAGS = -c -O2 $(shell pkg-config --cflags libzmq libczmq jansson libsystemd) # -ggdb -Wextra
+#CC = gcc
+CFLAGS = -c -O2 -g -fno-omit-frame-pointer $(shell pkg-config --cflags libzmq libczmq jansson libsystemd) # -ggdb -Wextra
 LDFLAGS = $(shell pkg-config --libs libzmq libczmq jansson libsystemd)
 
 TARGETS = journal-gateway-zmtp-source journal-gateway-zmtp-sink journal-gateway-zmtp-control
