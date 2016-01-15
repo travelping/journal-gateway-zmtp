@@ -147,13 +147,15 @@ void check_machine_id(){
 //helper for HASH
 /* removes item from hash */
 void con_hash_delete(Connection **hash, Connection *item){
-    HASH_DEL(*hash, item);
-    free(item->client_key);
-    zframe_destroy(&(item->id_frame));
-    free(item);
+    if(item){
+      HASH_DEL(*hash, item);
+      free(item->client_key);
+      zframe_destroy(&(item->id_frame));
+      free(item);
+    }
 }
 
-FILE* create_log_filestream(char *client_key){
+FILE* create_log_filestream(const char *client_key){
     FILE *ret = NULL;
 
     // directoryname/machineid/
@@ -262,14 +264,14 @@ int get_timestamps(clockid_t clk_id, char *buf, size_t buf_len, size_t *ts_lengt
 //-1: in field _machine_id (done with pinpointing)
 int pinpoint_metafields(const char* start, char** equalsign, char** end){
     int ret = 0;
-    const char *machine_id_key = "_MACHINE_ID";
+    const char machine_id_key[] = "_MACHINE_ID";
     char *akt_pos = (char*)start;       // casting to avoid compiler complaints
 
     // no systemd unique meta field
     if ( *equalsign == NULL ){
         // machine id field
-        if ( strncmp(akt_pos, machine_id_key, sizeof(machine_id_key)) == 0 ){
-            akt_pos += sizeof(machine_id_key);
+        if ( strncmp(akt_pos, machine_id_key, sizeof(machine_id_key) - 1) == 0 ){
+            akt_pos += sizeof(machine_id_key) - 1;
             ret = -1;
         }
     }
@@ -492,6 +494,7 @@ int whelper_write(whelper *h, const void *buf, size_t count){
 int write_remote_log(void *frame_data, size_t frame_size){
     Logging_source_t *logging_source = NULL;
     whelper h;
+    int ret = 0;
 
     Journalentry_fieldpins pins;
     pinpoint_all_metafields(frame_data, &pins);
@@ -534,9 +537,16 @@ int write_remote_log(void *frame_data, size_t frame_size){
     whelper_write(&h, "\n", 1);
 
     if(h.ok!=1){
-        return 0;
+      ret = 0;
     }
-    return 1;
+    else{
+      ret = 1;
+    }
+
+    //cleanup
+    free(h.log_machine_id);
+
+    return ret;
 }
 
 /* Do something with the received (log)message */
@@ -578,9 +588,12 @@ int response_handler(zframe_t* cid, zmsg_t *response){
 			assert(queryframe);
 			zmsg_push(m, queryframe);
 			zmsg_push(m, cid);
-			zmsg_send (&m, client);
-            free(query_string);
-        }
+			int rc = zmsg_send (&m, client);
+      if(rc != 0){
+        zmsg_destroy(&m);
+      }
+      free(query_string);
+      }
         else if( memcmp( frame_data, LOGOFF, strlen(LOGOFF) ) == 0 ){
             sd_journal_print(LOG_INFO, "one source of the gateway logged off, ID: %s", client_ID);
             Connection *lookup = NULL;
@@ -927,9 +940,10 @@ void show_diskusage(char *ret){
     FILE* du = popen(du_cmd, "r");
     assert(du);
     char du_ret[2048];
-    int rc = fscanf(du, "%s", du_ret);
+    int rc = fscanf(du, "%2048s", du_ret);
     assert(rc);
-    sprintf(ret, du_ret);
+    snprintf(ret, 2048, du_ret);
+    pclose(du);
 }
 
 /*
@@ -969,11 +983,13 @@ int get_arg_int(json_t *arg){
 */
 int execute_command(opcode command_id, json_t *command_arg, zframe_t **response){
     int port;
-    char *dir, stringh[2048];
+    char *input, stringh[2048];
 
     switch (command_id){
         case FILTER_ADD:
-            filter_add(get_arg_string(command_arg), response);
+            input = get_arg_string(command_arg);
+            filter_add(input, response);
+            free(input);
             break;
         case FILTER_ADD_CONJUNCTION:
             filter_add_conjunction(response);
@@ -997,10 +1013,11 @@ int execute_command(opcode command_id, json_t *command_arg, zframe_t **response)
         case SHOW_EXPOSED_PORT:
             show_exposed_port(response);
             break;
-        case SET_LOG_DIRECTORY:
-            dir = get_arg_string(command_arg);
+        case SET_LOG_DIRECTORY:{
+            char *dir = get_arg_string(command_arg);
             set_log_directory(dir, response);
             break;
+        }
         case SHOW_LOG_DIRECTORY:
             show_log_directory(response);
             break;
@@ -1170,6 +1187,9 @@ int main ( int argc, char *argv[] ){
         /* receive logs */
         if(items[0].revents & ZMQ_POLLIN){
             response = zmsg_recv(client);
+            if(!response){
+              //FIXME
+            }
             client_ID = zmsg_pop (response);
             assert(client_ID);
             client_key = zframe_strhex(client_ID);
@@ -1187,7 +1207,7 @@ int main ( int argc, char *argv[] ){
             free(client_key);
             lookup->time_last_message = get_clock_time();
             rc = response_handler(client_ID, response);
-            zmsg_destroy (&response);
+            zmsg_destroy(&response);
             /* end of log stream and not listening for more OR did an error occur? */
             if ( rc==1 || rc==-1 ){
                 break;
@@ -1205,6 +1225,7 @@ int main ( int argc, char *argv[] ){
             rc = control_handler(response, client_ID);
             assert(rc);
             zmsg_destroy (&response);
+            zframe_destroy(&client_ID);
         }
         time_t now = get_clock_time();
         if ( difftime(now, last_check) > 60 ){
@@ -1222,6 +1243,12 @@ int main ( int argc, char *argv[] ){
     zsocket_destroy (ctx, client);
     zsocket_destroy (ctx, router_control);
     zctx_destroy (&ctx);
+
+    free(filter);
+    free(new_filter);
+    free(remote_journal_directory);
+    free(client_socket_address);
+    free(control_socket_address);
 
     sd_journal_print(LOG_INFO, "...gateway sink stopped");
     return 0;

@@ -1,4 +1,5 @@
 *.o
 journal-gateway-zmtp-source
 journal-gateway-zmtp-sink
+journal-gateway-zmtp-control
 *.tags*

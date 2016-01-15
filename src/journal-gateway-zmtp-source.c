@@ -72,6 +72,7 @@
 #include <signal.h>
 #include <stdint.h>
 #include <errno.h>
+
 #include "journal-gateway-zmtp.h"
 #include "journal-gateway-zmtp-control.h"
 #include "journal-gateway-zmtp-source.h"
@@ -484,10 +485,12 @@ int get_int_from_jstring(json_t *arg){
 
 int execute_command(opcode command_id, json_t *command_arg, zframe_t **response){
     char stringh[2048];
-
+    char *input;
     switch (command_id){
         case FILTER_ADD:
-            filter_add(get_string_from_jstring(command_arg), response);
+            input = get_string_from_jstring(command_arg);
+            filter_add(input, response);
+            free(input);
             break;
         case FILTER_ADD_CONJUNCTION:
             filter_add_conjunction(response);
@@ -505,16 +508,18 @@ int execute_command(opcode command_id, json_t *command_arg, zframe_t **response)
             filter_show(response);
             break;
         case SET_TARGET_PORT: ;
-            char *port = get_string_from_jstring(command_arg);
-            set_target_port(port);
+            input = get_string_from_jstring(command_arg);
+            set_target_port(input);
             *response = zframe_new(CTRL_ACCEPTED,strlen(CTRL_ACCEPTED));
-            free(port);
+            free(input);
             break;
         case SHOW_TARGET_PORT:
             show_target_port(response);
             break;
         case SET_LOG_DIRECTORY:
-            set_log_directory(get_string_from_jstring(command_arg), response);
+            input = get_string_from_jstring(command_arg);
+            set_log_directory(input, response);
+            free(input);
             break;
         case SHOW_LOG_DIRECTORY:
             show_log_directory(response);
@@ -571,12 +576,24 @@ void set_matches(json_t *json_args, char *key){
             json_t *value1;
             json_array_foreach(json_clause, index1, value1) {
                 const char *json_clause_value = json_string_value(value1);
-                (clause->primitives)[index1] = (char *) malloc( sizeof(char) * (strlen(json_clause_value)+1) );
-                strcpy((clause->primitives)[index1], json_clause_value);
+                const size_t l = strlen(json_clause_value) + 1;
+                (clause->primitives)[index1] = (char *) malloc(l);
+                strncpy((clause->primitives)[index1], json_clause_value, l);
             }
             clauses[index] = clause;
         }
 
+        if(args->clauses){
+          size_t i,j;
+          for (i=0; i<args->n_clauses; i++){
+            clause = args->clauses[i];
+            for (j=0; j<clause->n_primitives; j++){
+              free(clause->primitives[j]);
+            }
+            free(args->clauses[i]);
+          }
+          free(args->clauses);
+        }
         args->n_clauses = n_clauses;
         args->clauses = clauses;
 
@@ -620,7 +637,6 @@ uint64_t get_arg_date(json_t *json_args, char *key){
     else{
         return -1;
     }
-    json_decref(json_date);
 }
 
 // apply the filter set in args to j
@@ -751,8 +767,10 @@ char *get_entry_string(char** entry_string, size_t* entry_string_size){
     int counter = 0, i;
 
     /* first get the number of fields to allocate memory */
-    SD_JOURNAL_FOREACH_DATA(j, data, length)
-        counter++;
+    SD_JOURNAL_FOREACH_DATA(j, data, length) {
+      counter++;
+    }
+
     char *entry_fields[counter+1+3];        // +3 for meta information, prefixed by '__'
 	//entry_fields[counter+3] = 0;  // guessing
     int entry_fields_len[counter+1+3];        // +3 for meta information, prefixed by '__'
@@ -866,7 +884,7 @@ static void *handler_routine (void *inp) {
     zctx_t *ctx = zctx_new ();
     s_catch_signals();
     void *query_handler = zsocket_new (ctx, ZMQ_DEALER);
-	assert(query_handler);
+	  assert(query_handler);
     //zsocket_set_sndhwm (query_handler, HANDLER_HWM);
     int rc = zsocket_bind (query_handler, BACKEND_SOCKET);
 
@@ -928,25 +946,27 @@ static void *handler_routine (void *inp) {
             size_t entry_string_size;
             char *entry_string;
             get_entry_string( &entry_string, &entry_string_size );
-            if ( memcmp(entry_string, END, strlen(END)) == 0 ){
-                send_flag_wrapper (query_handler, ctx, "query finished successfully", END);
+            if( memcmp(entry_string, END, strlen(END)) == 0 ){
+                send_flag_wrapper(query_handler, ctx, "query finished successfully", END);
+                free(entry_string);
                 return NULL;
             }
-            else if ( memcmp(entry_string, ERROR, strlen(ERROR)) == 0 ){
+            else if( memcmp(entry_string, ERROR, strlen(ERROR)) == 0 ){
                 send_flag(query_handler, ctx, ERROR);
                 sd_journal_close( j );
                 RequestMeta_destruct(args);
+                free(entry_string);
                 return NULL;
             }
             /* no problems with the new entry, send it */
             else{
                 zmsg_t *entry_msg = build_entry_msg(entry_string, entry_string_size);
-                free (entry_string);
+                free(entry_string);
                 zmsg_send (&entry_msg, query_handler);
             }
         }
         /* end of journal and 'follow' or 'listen' active? => wait indefinitely */
-        else if ( rc == 0 && (args->follow || args->listening) ){
+        else if(rc == 0 && (args->follow || args->listening)){
             sd_journal_wait( j, (uint64_t) 5000 );
         }
         /* in case moving the journal pointer around produced an error */
@@ -1028,7 +1048,7 @@ int control_handler (zmsg_t *command_msg, zframe_t *cid){
     return ret;
 }
 
-int main (int argc, char *argv[]){
+int main(int argc, char *argv[]) {
 
     struct option longopts[] = {
         { "help",       no_argument,            NULL,         'h' },
@@ -1082,11 +1102,14 @@ The journal-gateway-zmtp-sink has to expose the given socket.\n\n"
     new_filter = strdup("[[]]");
 
     args = malloc( sizeof(RequestMeta) );
+    args->clauses = NULL;
     json_t *json_helper = json_object();
     json_t *json_filter = json_loads("[[]]", JSON_REJECT_DUPLICATES, NULL);
     json_object_set(json_helper, "helper", json_filter);
     set_matches(json_helper, "helper");
     json_decref(json_helper);
+    json_decref(json_filter);
+
 
     sd_journal_print(LOG_INFO, "gateway started...");
 
@@ -1193,7 +1216,10 @@ The journal-gateway-zmtp-sink has to expose the given socket.\n\n"
             }
 
             free(handler_response_string);
-            zmsg_send (&response, frontend);
+            rc = zmsg_send (&response, frontend);
+            if(rc != 0){
+              zmsg_destroy(&response);
+            }
         }
         /* receive controls */
         if(items[2].revents & ZMQ_POLLIN){
