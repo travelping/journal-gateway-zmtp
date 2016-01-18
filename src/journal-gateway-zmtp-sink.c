@@ -1261,7 +1261,6 @@ int main ( int argc, char *argv[] ){
     free(new_filter);
     free(remote_journal_directory);
     free(client_socket_address);
-    free(control_socket_address);
 
     sd_journal_print(LOG_INFO, "...gateway sink stopped");
     return 0;
