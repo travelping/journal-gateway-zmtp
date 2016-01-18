@@ -935,15 +935,27 @@ void show_sources(char *ret){
 }
 
 // returns a string with the used space in bytes
-void show_diskusage(char *ret){
-    char du_cmd[2048];
+void show_diskusage(char *output, size_t output_len){
+
+    //create command to call diskusage for the journal directory
+    char du_cmd[output_len];
     sprintf(du_cmd, du_cmd_format, remote_journal_directory);
     FILE* du = popen(du_cmd, "r");
     assert(du);
-    char du_ret[2048];
-    int rc = fscanf(du, "%2048s", du_ret);
-    assert(rc);
-    snprintf(ret, 2048, du_ret);
+
+    static const char err_msg[] = "Command diskusage didn't return expected value.";
+    const char* msg = err_msg;
+    size_t msg_len = sizeof(err_msg);
+
+    char du_ret[output_len];
+    size_t nbytes = fread(du_ret, 1, output_len, du);
+    if (nbytes > 0) {
+      du_ret[nbytes-1] = '\0';
+      msg = du_ret;
+      msg_len = nbytes;
+    }
+
+    memcpy(output, msg, msg_len);
     pclose(du);
 }
 
@@ -1035,8 +1047,8 @@ int execute_command(opcode command_id, json_t *command_arg, zframe_t **response)
             *response = zframe_new(stringh,strlen(stringh));
             break;
         case SHOW_DISKUSAGE:
-            show_diskusage(&stringh[0]);
-            *response = zframe_new(stringh,strlen(stringh));
+            show_diskusage(&stringh[0], sizeof(stringh));
+            *response = zframe_new(stringh, strlen(stringh));
             break;
         case CTRL_SHUTDOWN:
             stop_gateway(0);
