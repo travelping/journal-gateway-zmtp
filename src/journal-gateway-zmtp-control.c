@@ -45,45 +45,6 @@ static void s_catch_signals (){
     sigaction(SIGTERM, &action, NULL);
 }
 
-int parse_command(char **command, char **argument){
-    char inp[1024];
-
-    //get the input, checking NULL to catch EOF input
-    if(fgets(inp, sizeof(inp), stdin) == NULL){
-        *command = strdup("");
-        *argument = strdup("");
-        return 0;
-    }
-
-    // parse the input
-    // leading spaces
-    size_t i=0;
-    while(i<sizeof(inp) && isspace(inp[i])){
-        i++;
-    }
-    // command
-    size_t pc = i, lc = 0;
-    while(i<sizeof(inp) && !isspace(inp[i])){
-        lc++;
-        i++;
-    }
-    // spaces between command and argument
-    while(i<sizeof(inp) && isspace(inp[i])){
-        i++;
-    }
-    // argument
-    size_t pa=i, la=0;
-    while(i<sizeof(inp) && inp[i]!=EOF && inp[i]!='\n'){
-        la++;
-        i++;
-    }
-
-    *command = strndup(inp+pc, lc);
-    *argument = strndup(inp+pa, la);
-
-    return 1;
-}
-
 int send_command(void *socket, char *command, char *argument){
     zmsg_t *msg = zmsg_new();
     assert(msg);
