@@ -651,7 +651,8 @@ int control_handler (zmsg_t *command_msg, zframe_t *cid){
             opcode command_id;
             rc = get_command_id_by_key(command_key, &command_id);
 
-            zmsg_t *m = zmsg_new(); assert(m);
+            zmsg_t *m = zmsg_new();
+            assert(m);
             zframe_t *response = NULL;
             //command was valid
             if( rc==1 ){
@@ -661,14 +662,14 @@ int control_handler (zmsg_t *command_msg, zframe_t *cid){
                 //if rc==0 the command execution failed unexpectedly, this shouldn't happen in this if branch
                 assert(rc);
                 zmsg_push(m, response);
-                zmsg_push(m, cid);
+                zmsg_push(m, zframe_dup(cid));
                 zmsg_send(&m, router_control);
             }
             //command was not valid
             else{
                 response = zframe_new(CTRL_UKCOM, strlen(CTRL_UKCOM));
                 zmsg_push(m, response);
-                zmsg_push(m, cid);
+                zmsg_push(m, zframe_dup(cid));
                 zmsg_send(&m, router_control);
             }
 
