@@ -4,8 +4,10 @@ TEST_DIR = $(BASE_DIR)/test
 MISC_DIR = $(BASE_DIR)/misc
 
 #CC = gcc
-CFLAGS = -c -O2 -g -fno-omit-frame-pointer $(shell pkg-config --cflags libzmq libczmq jansson libsystemd) # -ggdb -Wextra
-LDFLAGS = $(shell pkg-config --libs libzmq libczmq jansson libsystemd)
+CFLAGS_DEPS = $(shell pkg-config --cflags libzmq libczmq jansson libsystemd)
+CFLAGS = -c $(EXTRA_CFLAGS) -O2 -fno-omit-frame-pointer $(CFLAGS_DEPS)
+LDFLAGS_DEPS = $(shell pkg-config --libs libzmq libczmq jansson libsystemd)
+LDFLAGS = $(EXTRA_LDFLAGS) $(LDFLAGS_DEPS)
 
 TARGETS = journal-gateway-zmtp-source journal-gateway-zmtp-sink journal-gateway-zmtp-control
 
