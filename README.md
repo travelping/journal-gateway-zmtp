@@ -45,8 +45,8 @@ Mode of Operation
                                                              |file |  |file |
                                                              +-----+  +-----+
 ```
-Installation
-------------
+Build and Installation
+----------------------
 
 You will need [ZeroMQ](http://zeromq.org/intro:get-the-software) (recomended
 version: 3.2.5, you'll need >= 3),
@@ -69,6 +69,9 @@ Then just execute (in the journal-gateway-zmtp directory):
 make              # you can also just build the gateway or the client
                   # with 'make source' or 'make sink'
 ```
+
+If you wish to use additional compiler flags you can insert them via the
+environment variable EXTRA_CFLAGS or EXTRA_LDFLAGS for linking.
 
 To install the files into your system, you can call the install script in
 /sample
@@ -286,3 +289,10 @@ This will write everything in your journal into a journal file in the specified 
 ```bash
 journalctl --directory ~/logtest -f
 ```
+
+Planned Features
+----------------
+
+* simpler filter communication between sink & source
+* documentation on how to use the shipped systemd service files
+* configuration via actual .conf files instead of environment variables

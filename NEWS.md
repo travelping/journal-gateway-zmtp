@@ -3,6 +3,17 @@ journal-gateway-zmtp
 
 A gateway for transmitting of systemds journal via a zmtp connection.
 
+Version 1.0.5 - 19 Jan 2016
+---------------------------
+* fixed several memory leaks discovered by coverity and valgrind
+* fixed crashing sink after receiving kill signal
+* the makefile now allows dynamically setting of compile flags via
+  EXTRA_CFLAGS and EXTRA_LDFLAGS
+
+Version 1.0.4 - 15 Jan 2016
+---------------------------
+* fixed several memory leaks discovered by coverity and valgrind
+
 Version 1.0.3 - 04 Nov 2015
 ---------------------------
 * Add service & timer for log rotation of remote log directory
