@@ -764,14 +764,14 @@ char *get_entry_string(char** entry_string, size_t* entry_string_size){
   const void *data;
   size_t length;
   size_t total_length = 0;
-  int counter = 0, i;
+  size_t counter = 0, i;
 
   /* first get the number of fields to allocate memory */
   SD_JOURNAL_FOREACH_DATA(j, data, length) {
     counter++;
   }
 
-  char *entry_fields[counter+1+3];        // +3 for meta information, prefixed by '__'
+  char* entry_fields[counter+1+3];        // +3 for meta information, prefixed by '__'
   //entry_fields[counter+3] = 0;  // guessing
   int entry_fields_len[counter+1+3];        // +3 for meta information, prefixed by '__'
 
@@ -799,13 +799,14 @@ char *get_entry_string(char** entry_string, size_t* entry_string_size){
 
   /* until now the prefixes for the meta information are missing */
   char *meta_information[] = { cursor, realtime_usec_string, monotonic_usec_string };
-  const char *meta_prefixes[] = {"__CURSOR=", "__REALTIME_TIMESTAMP=" , "__MONOTONIC_TIMESTAMP=" };
-  for(i=0; i<3; i++){
+  const char* meta_prefixes[] = {"__CURSOR=", "__REALTIME_TIMESTAMP=" , "__MONOTONIC_TIMESTAMP=" };
+
+  for (i = 0; i < 3; i++) {
     int prefix_len = strlen(meta_prefixes[i]);
     int information_len = strlen(meta_information[i]);
-    entry_fields[i] = (char *) alloca( sizeof(char) * ( prefix_len + information_len ));
-    memcpy ( entry_fields[i], (void *) meta_prefixes[i], prefix_len );
-    memcpy ( entry_fields[i] + prefix_len, (void *) meta_information[i], information_len );
+    entry_fields[i] = malloc(prefix_len + information_len);
+    memcpy(entry_fields[i], (void*)meta_prefixes[i], prefix_len);
+    memcpy(entry_fields[i] + prefix_len, (void*)meta_information[i], information_len);
     entry_fields_len[i] = prefix_len + information_len;
     total_length += entry_fields_len[i];
   }
@@ -813,30 +814,46 @@ char *get_entry_string(char** entry_string, size_t* entry_string_size){
 
   /* then get all fields */
   counter = 3;
+
+  const char respect_multline = (args->format == NULL) || strcmp(args->format, "export");
+
   SD_JOURNAL_FOREACH_DATA(j, data, length){
-    entry_fields[counter] = (char *) alloca( sizeof(char) * (length) );
-    memcpy (entry_fields[counter], (void *) data, length );
-    entry_fields_len[counter] = length;
-    total_length += length;
 
-    /* check if this is a multiline message when export format (default) is chosen */
-    if ((args->format == NULL || strcmp( args->format, "export" ) == 0)
-    && memchr(entry_fields[counter], '\n', length) != NULL)
-    {
-      char *field_name = strtok(entry_fields[counter], "=");
-      int field_name_len = strlen(field_name);
-      int new_length = length+8;  // +8 for 64 bit integer
-      int64_t new_length64 = length - field_name_len - 1;
+    char* field = NULL;
+    size_t field_len = 0;
 
-      entry_fields[counter] = (char *) alloca( sizeof(char) * new_length );
-      memcpy (entry_fields[counter], (void *) field_name, field_name_len);
-      entry_fields[counter][field_name_len] = '\n';
-      memcpy ( entry_fields[counter] + field_name_len + 1, (char *) &new_length64, 8 );
-      memcpy ( entry_fields[counter] + field_name_len + 1 + 8, field_name + field_name_len + 1, length - field_name_len - 1 );
+    // data coming from the journal api might contain a \n. this makes it
+    // necessary to transform the output data to the multiline export format.
+    // see http://www.freedesktop.org/wiki/Software/systemd/export/
+    if (respect_multline && memchr(data, '\n', length) != NULL) {
 
-      entry_fields_len[counter] = new_length;
-      total_length += 8;
+      const char* key = data;
+      const char* key_end = memchr(key, '=', length);
+      size_t key_len = key_end - key;
+      uint64_t value_len = length - key_len - 1;
+      uint64_t value_len_le = htole64(value_len);
+
+      // the '='' will be replaced by '\n', the only needed space is for the
+      // 64bit value describing the length of the remaining data. so, the data
+      // looks like: FIELD_NAME\n<DATA_LEN>DATA
+      field_len = length + 8;
+      field = malloc(field_len);
+
+      memcpy(field, key, key_len);
+      field[key_len] = '\n';
+      memcpy(field + key_len + 1, (char*)(&value_len_le), 8);
+      memcpy(field + key_len + 1 + 8, data + key_len + 1, value_len);
+
+    } else { // the regular, non-multiline case
+      field = malloc(length);
+      memcpy(field, (void*)data, length);
+      field_len = length;
     }
+
+    entry_fields[counter] = field;
+    entry_fields_len[counter] = field_len;
+    total_length += field_len;
+
     counter++;
   }
 
@@ -844,9 +861,10 @@ char *get_entry_string(char** entry_string, size_t* entry_string_size){
   if( args->format == NULL || strcmp( args->format, "export" ) == 0 || strcmp( args->format, "plain" ) == 0){
     *entry_string = (char *) malloc( sizeof(char) * ( total_length + counter )); // counter times '\n'
     assert(entry_string);
-    int p = 0;
-    for(i=0; i<counter; i++){
-      memcpy ( *entry_string + p, (void *) entry_fields[i], entry_fields_len[i] );
+    size_t p = 0;
+    for (i = 0; i < counter; i++) {
+      memcpy (*entry_string + p, (void *)entry_fields[i], entry_fields_len[i]);
+      free(entry_fields[i]);
       p += entry_fields_len[i];
       *(*entry_string + p) = '\n';
       p++;
