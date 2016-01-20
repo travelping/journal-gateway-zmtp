@@ -1221,6 +1221,7 @@ int main(int argc, char *argv[]) {
     if (items[1].revents & ZMQ_POLLIN) {
       response = zmsg_recv (backend);
 
+      zframe_destroy(&handler_ID);
       handler_ID = zmsg_pop (response);
       zframe_t *handler_response = zmsg_last (response);
 
@@ -1234,6 +1235,7 @@ int main(int argc, char *argv[]) {
       }
 
       free(handler_response_string);
+
       rc = zmsg_send (&response, frontend);
       if(rc != 0){
         zmsg_destroy(&response);
