@@ -551,79 +551,80 @@ int write_remote_log(void *frame_data, size_t frame_size){
 
 /* Do something with the received (log)message */
 int response_handler(zframe_t* cid, zmsg_t *response){
-    zframe_t *frame;
-    void *frame_data;
-    size_t frame_size;
-    int more;
-    int ret = 0;
-    char* client_ID = zframe_strhex(cid);
+  zframe_t *frame;
+  void *frame_data;
+  size_t frame_size;
+  int more;
+  int ret = 0;
+  char* client_ID = zframe_strhex(cid);
 
-    do{
-        frame = zmsg_pop (response);
-        frame_size = zframe_size(frame);
-        more = zframe_more (frame);
-        frame_data = zframe_data(frame);
-        if( memcmp( frame_data, END, strlen(END) ) == 0 ){
-            zframe_destroy (&frame);
-            if (!listening) {
-                ret =  1;
-            }
-            break;
-        }
-        else if( memcmp( frame_data, ERROR, strlen(ERROR) ) == 0 ){
-            zframe_destroy (&frame);
-            ret = -1;
-            break;
-        }
-        else if( memcmp( frame_data, TIMEOUT, strlen(TIMEOUT) ) == 0 ) NULL;
-        else if( memcmp( frame_data, READY, strlen(READY) ) == 0 ) NULL;
-        else if( memcmp( frame_data, STOP, strlen(STOP) ) == 0 ){
-            NULL;
-        }
-        else if( memcmp( frame_data, LOGON, strlen(LOGON) ) == 0 ){
-            /* send query as first response */
-            char *query_string = build_query_string();
-			zmsg_t *m = zmsg_new(); assert(m);
-			zframe_t *queryframe = zframe_new(query_string, strlen(query_string)+1);
-			assert(queryframe);
-			zmsg_push(m, queryframe);
-			zmsg_push(m, cid);
-			int rc = zmsg_send (&m, client);
+  do{
+    frame = zmsg_pop (response);
+    frame_size = zframe_size(frame);
+    more = zframe_more (frame);
+    frame_data = zframe_data(frame);
+    if( memcmp( frame_data, END, strlen(END) ) == 0 ){
+      zframe_destroy (&frame);
+      if (!listening) {
+        ret =  1;
+      }
+      break;
+    }
+    else if( memcmp( frame_data, ERROR, strlen(ERROR) ) == 0 ){
+      zframe_destroy (&frame);
+      ret = -1;
+      break;
+    }
+    else if( memcmp( frame_data, TIMEOUT, strlen(TIMEOUT) ) == 0 ) NULL;
+    else if( memcmp( frame_data, READY, strlen(READY) ) == 0 ) NULL;
+    else if( memcmp( frame_data, STOP, strlen(STOP) ) == 0 ){
+      NULL;
+    }
+    else if( memcmp( frame_data, LOGON, strlen(LOGON) ) == 0 ){
+      /* send query as first response */
+      char *query_string = build_query_string();
+      zmsg_t *m = zmsg_new(); assert(m);
+      zframe_t *queryframe = zframe_new(query_string, strlen(query_string)+1);
+      assert(queryframe);
+      zmsg_push(m, queryframe);
+      zmsg_push(m, zframe_dup(cid));
+      int rc = zmsg_send (&m, client);
       if(rc != 0){
         zmsg_destroy(&m);
       }
       free(query_string);
+    }
+    else if( memcmp( frame_data, LOGOFF, strlen(LOGOFF) ) == 0 ){
+      sd_journal_print(LOG_INFO, "one source of the gateway logged off, ID: %s", client_ID);
+      Connection *lookup = NULL;
+      HASH_FIND_STR( connections, client_ID, lookup );
+      con_hash_delete( &connections, lookup );
+      ret=2;
+    }
+    // received a log message
+    else if(((char*)frame_data)[0] == '_'){
+      if(!write_remote_log(frame_data, frame_size)){
+        sd_journal_print(LOG_ERR, "writing of log message to journal file failed");
+        ret = -2;
       }
-        else if( memcmp( frame_data, LOGOFF, strlen(LOGOFF) ) == 0 ){
-            sd_journal_print(LOG_INFO, "one source of the gateway logged off, ID: %s", client_ID);
-            Connection *lookup = NULL;
-            HASH_FIND_STR( connections, client_ID, lookup );
-            con_hash_delete( &connections, lookup );
-            ret=2;
-        }
-        // received a log message
-        else if(((char*)frame_data)[0] == '_'){
-            if(!write_remote_log(frame_data, frame_size)){
-                sd_journal_print(LOG_ERR, "writing of log message to journal file failed");
-                ret = -2;
-            }
-        }
-        else{
-            char *buf = malloc(frame_size+1);
-            memcpy(buf, frame_data, frame_size);
-            buf[frame_size] = NULL;
-            sd_journal_send("PRIORITY=%i", LOG_NOTICE,
-                            "MESSAGE=received unexpected frame: %s", buf,
-                            "DUMP=%s", buf,
-                            NULL);
-            free(buf);
-        }
-        zframe_destroy (&frame);
-    }while(more);
+    }
+    else{
+      char *buf = malloc(frame_size+1);
+      memcpy(buf, frame_data, frame_size);
+      buf[frame_size] = NULL;
+      sd_journal_send("PRIORITY=%i", LOG_NOTICE,
+      "MESSAGE=received unexpected frame: %s", buf,
+      "DUMP=%s", buf,
+      NULL);
+      free(buf);
+    }
+    zframe_destroy (&frame);
+  }while(more);
 
-    free(client_ID);
+  zframe_destroy(&cid);
+  free(client_ID);
 
-    return ret;
+  return ret;
 }
 
 /* handle received control messages */
@@ -1202,6 +1203,9 @@ int main ( int argc, char *argv[] ){
             response = zmsg_recv(client);
             if(!response){
               //FIXME
+              //receive was interupted
+              //log faulty receive
+              //fix state
             }
             client_ID = zmsg_pop (response);
             assert(client_ID);
@@ -1219,7 +1223,8 @@ int main ( int argc, char *argv[] ){
             }
             free(client_key);
             lookup->time_last_message = get_clock_time();
-            rc = response_handler(client_ID, response);
+            rc = response_handler(zframe_dup(client_ID), response);
+            zframe_destroy(&client_ID);
             zmsg_destroy(&response);
             /* end of log stream and not listening for more OR did an error occur? */
             if ( rc==1 || rc==-1 ){
