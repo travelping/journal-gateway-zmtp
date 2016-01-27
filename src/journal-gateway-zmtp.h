@@ -20,4 +20,4 @@
 
 #define VMAYOR 1
 #define VMINOR 0
-#define VPATCH 5
+#define VPATCH 6

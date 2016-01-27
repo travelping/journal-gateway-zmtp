@@ -3,6 +3,11 @@ journal-gateway-zmtp
 
 A gateway for transmitting of systemds journal via a zmtp connection.
 
+Version 1.0.6 - 27 Jan 2016
+---------------------------
+* fixed several memory leaks discovered by valgrind
+* rework on journal handling code (avoid crashes on really big input)
+
 Version 1.0.5 - 19 Jan 2016
 ---------------------------
 * fixed several memory leaks discovered by coverity and valgrind
