@@ -123,6 +123,47 @@ JOURNAL_SOURCE_DIR the target socket for the logs.
 
 Use --help for an overview of all commands.
 
+### usage with systemd service files
+
+If you used the install script ``sample/install.sh`` two systemd service files
+will be located in your ``/lib/systemd/system/`` folder
+
+* journal-gateway-zmtp-source.service
+* journal-gateway-zmtp-sink.service
+
+and two so called systemd environment files will be located in your
+``/etc/`` folder
+
+* journal-gateway-zmtp-source.conf
+* journal-gateway-zmtp-sink.conf
+
+The ``.conf`` files will be read by the ``.service`` files. By changing the
+ ``.conf`` files you can control
+
+for the source:
+* the directory in which journal-gateway-zmtp-sink will store received logs
+* the port which journal-gateway-zmtp-sink will hold open and receive logs on
+* the port on which journal-gateway-zmtp-sink will listen for control signals
+* how old a journal file can be before it is deleted by rotation
+* how much space can be used by journal files
+
+for the sink:
+* the port to which journal-gateway-zmtp-source will send the logs
+* the directory from which the journal-gateway-zmtp-source will read the logs
+* the port on which journal-gateway-zmtp-source will listen for control signals
+
+To start the systemd ``.service`` simply call one or both of the following
+
+```
+systectl start journal-gateway-zmtp-sink
+systectl start journal-gateway-zmtp-source
+```
+
+For more info on systemd service files see [systemd's documentation](http://www.freedesktop.org/software/systemd/man/systemd.service.html)
+
+Configuration with systemd environment filters
+----------------------------------------------
+
 Configuration while Running
 ---------------------------
 
@@ -294,5 +335,4 @@ Planned Features
 ----------------
 
 * simpler filter communication between sink & source
-* documentation on how to use the shipped systemd service files
 * configuration via actual .conf files instead of environment variables
