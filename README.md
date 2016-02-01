@@ -1,6 +1,8 @@
 journal-gateway-zmtp
 ====================
 
+Now with substantially more swoosh!
+
 A ZeroMQ gateway for sending logs from systemd's journald over the network and a
 sink.
 
