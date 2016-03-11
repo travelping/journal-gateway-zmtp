@@ -56,7 +56,7 @@ be build seperately (thus you dont need systemd for the client). Using Fedora
 you can do:
 
 ```bash
-yum install jansson jansson-devel systemd-devel
+dnf install jansson-devel systemd-devel czmq-devel
 ```
 
 for jansson and systemd. To install ZMQ and CZMQ follow the instructions on
