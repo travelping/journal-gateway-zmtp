@@ -1198,6 +1198,13 @@ int try_write(int fd, const void *buf, size_t count, char *machine_id){
       /* receive controls or logs, initiate connections to new sources */
       while ( active ){
         rc=zmq_poll (items, 2, poll_wait_time);
+        if (rc < 0) {
+            // FIXME // yet another unhandled case
+            // just do something better then active waiting:
+            printf("zmq_poll terminated with error condition %d.\n", rc);
+            sleep(1);
+            exit(1);
+        }
         /* receive logs */
         if(items[0].revents & ZMQ_POLLIN){
           response = zmsg_recv(client);
