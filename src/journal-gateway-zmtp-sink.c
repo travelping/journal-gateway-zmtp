@@ -61,7 +61,7 @@ typedef struct {
 }Connection;
 
 typedef struct {
-  char            *src_machine_id;
+  const char            *src_machine_id;
   FILE            *sjr;
   UT_hash_handle  hh; /*requirement for uthash*/
 }Logging_source_t;
@@ -164,7 +164,7 @@ FILE* create_log_filestream(const char *client_key){
   const char sjr_cmd_format[] = "/lib/systemd/systemd-journal-remote -o %s/%s/%s.journal -";
 
   char *main_dir = remote_journal_directory;
-  char *logorigin_dir = client_key;
+  const char *logorigin_dir = client_key;
   const char *jfile_name = "remote";
 
   size_t s = strlen(sjr_cmd_format) + strlen(main_dir) + strlen(logorigin_dir) + strlen(jfile_name);
@@ -611,7 +611,7 @@ int try_write(int fd, const void *buf, size_t count, char *machine_id){
         else{
           char *buf = malloc(frame_size+1);
           memcpy(buf, frame_data, frame_size);
-          buf[frame_size] = NULL;
+          buf[frame_size] = '\0';
           sd_journal_send("PRIORITY=%i", LOG_NOTICE,
           "MESSAGE=received unexpected frame: %s", buf,
           "DUMP=%s", buf,
